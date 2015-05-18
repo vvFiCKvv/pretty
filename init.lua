@@ -1,4 +1,36 @@
+local setmetatable = setmetatable
+local print,ipairs  = print,ipairs
 local awful     = require("awful")
+local beautiful = require("beautiful")
+--TODO: one timer per tag
+local switchTimer = { 
+	index = 1,
+	timer = nil,
+	type = nil,
+	types = { client = 0, tag = 1, tagScreens = 2 },
+	screen = nil,
+	tag = nil,
+	clear = function (this)
+				if this.timer then
+					this.timer:stop() -- stop and clear the timer
+				end
+				this.timer = nil
+				this.index = 1
+				this.type = nil
+				this.screen = nil
+				this.tag = nil
+			end,
+	init = function (this, seconds, type)
+		this.timer = timer { timeout = seconds } -- init timer with interval 1 sec
+		this.type = type
+		this.screen = mouse.screen
+		this.tag = awful.tag.selected()
+		this.timer:connect_signal("timeout",-- on timeout
+			function()
+				this:clear()
+			end)
+	end
+}
 -- {{{ Functions
 
 --- Move mouse to center of a client
@@ -212,6 +244,106 @@ awful.tag.viewall_screens_toggle = function ()
 		awful.mouse.moveto_client(c, true)
 	end
 end
+
+-- No border for maximized clients
+client.connect_signal("focus",
+	function(c)
+		if c.maximized_horizontal == true and c.maximized_vertical == true then
+			c.border_color = beautiful.border_normal
+		else
+			c.border_color = beautiful.border_focus
+		end
+	end)
+client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
+-- }}}
+
+-- {{{ Arrange signal handler
+for s = 1, screen.count() do screen[s]:connect_signal("arrange", function ()
+        local clients = awful.client.visible(s)
+        local layout  = awful.layout.getname(awful.layout.get(s))
+
+        if #clients > 0 then -- Fine grained borders and floaters control
+            for _, c in pairs(clients) do -- Floaters always have borders
+                if awful.client.floating.get(c) or layout == "floating" then
+                    c.border_width = beautiful.border_width
+
+                -- No borders with only one visible client
+                elseif #clients == 1 or layout == "max" then
+                    c.border_width = 0
+                else
+                    c.border_width = beautiful.border_width
+                end
+            end
+        end
+      end)
+end
+
+--keep the history of layouts per tag
+awful.tag.attached_connect_signal(nil, "property::layout", function(t)
+	s = awful.tag.getscreen(t)
+	currentLayout = awful.layout.get()
+	if currentLayout == awful.layout.suit.max or currentLayout == awful.layout.suit.floating then
+		awful.tag.setproperty(t,"tilingLayout", false)
+	else
+		selectedTags = awful.tag.selectedlist(s)
+		if #selectedTags == 1 then -- sigle tag selected
+			awful.tag.setproperty(t,"last_layout", currentLayout)
+			awful.tag.setproperty(t,"tilingLayout", true)
+		end
+	end
+	if client.focus then
+		client.focus:raise()
+	end
+end)
+---[[
+--TODO: multiple tags selection have its one history like a meta-tag fixes needing
+for s = 1, screen.count() do
+	screen[s]:connect_signal("tag::history::update", function()
+		t = awful.tag.selected(s)
+		if t~=nil then
+			selectedTags = awful.tag.selectedlist(s)
+			if #selectedTags > 1 then -- multiple tags selected
+				if awful.layout.get() ~= awful.layout.suit.floating and  awful.layout.get() ~= awful.layout.suit.max then
+					awful.layout.multiTags = {}
+					awful.layout.multiTags.last_layout =  awful.layout.get()
+				end
+			else -- single tag selected
+				if awful.layout.multiTags ~= nil then -- deselecting multiple tags
+					if awful.tag.getproperty(t,"last_layout") ~= nil then
+						awful.layout.set(awful.tag.getproperty(t,"last_layout"))
+						awful.layout.multiTags = nil
+					end
+				end
+				if awful.tag.getproperty(t,"last_layout") == nil then
+					awful.tag.setproperty(t,"last_layout", awful.layout.get())
+				   --do some stuff when virtual desktop has changed
+				end
+			   --TODO:Correct the focus
+				c = awful.mouse.client_under_pointer()
+				if c ~= nil then
+					if c:isvisible() == false then
+					else
+						client.focus = c
+						client.focus:raise()
+					end
+				end
+					--awful.client.focus.byidx(-1)
+			end
+		end
+	end)
+	--initialize visible tag for each screen
+	t = awful.tag.selected(s)
+	if t~=nil then
+		awful.tag.setproperty(t,"last_layout", awful.layout.get())
+	end
+end
+--]]
+--local tag = require("awful.tag")
+local function tag_history_count(screen, idx)
+	local s = screen or capi.mouse.screen
+	return #data.history[s]
+end
+--awful.tag.history.restore = tag_history_count
 
 
 -- }}}

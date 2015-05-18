@@ -1,3 +1,5 @@
+local setmetatable = setmetatable
+local print,ipairs  = print,ipairs
 local awful     = require( "awful"                   )
 local wibox     = require( "wibox"                   )
 local beautiful = require( "beautiful"               )
