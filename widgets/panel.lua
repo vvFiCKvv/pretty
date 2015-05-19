@@ -38,7 +38,7 @@ local function new(layouts)
 			widget:set_markup(markup(blue, mail) .. count)
 		end
 	})
-	--]]
+---]]
 
 	-- MPD
 	mpdicon = wibox.widget.imagebox(beautiful.play)
@@ -61,7 +61,7 @@ local function new(layouts)
 			widget:set_markup(markup(blue, title) .. artist)
 		end
 	})
-
+---[[
 	-- Battery
 	baticon = wibox.widget.imagebox(beautiful.bat)
 	batbar = awful.widget.progressbar()
@@ -112,7 +112,7 @@ local function new(layouts)
 	})
 	batwidget = wibox.widget.background(batmargin)
 	batwidget:set_bgimage(beautiful.widget_bg)
-
+---]]
 	-- /home fs
 	diskicon = wibox.widget.imagebox(beautiful.disk)
 	diskbar = awful.widget.progressbar()

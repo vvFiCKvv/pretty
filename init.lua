@@ -346,8 +346,10 @@ end
 --awful.tag.history.restore = tag_history_count
 
 
+
 -- }}}
 return {
 	widgets = require("eucalyptus.widgets"),
-	menus = require("eucalyptus.menus")
+	menus = require("eucalyptus.menus"),
+	layout = require("eucalyptus.layout")
 }
