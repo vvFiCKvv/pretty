@@ -244,17 +244,67 @@ awful.tag.viewall_screens_toggle = function ()
 		awful.mouse.moveto_client(c, true)
 	end
 end
+awful.client.maximize = function(c, status, orientation, filter)
+	if filter == nil then
+		filter = "normal"
+	end
+	if c.type ~= filter and filter~="all" then
+		return
+	end
+	if orientation == nil then 
+		orientation = "both"
+	end
+	if status == nil or status == "true" then
+		status = true
+	end
+	if status == "false" then
+		status = false
+	end
+	if orientation == "horizontal" or orientation == "both" then
+		if status == "toggle" then
+			c.maximized_horizontal = not clients[c].maximized_horizontal
+		else
+			c.maximized_horizontal = status
+		end
+	end
+	if orientation == "vertical" or orientation == "both" then
+		if status == "toggle" then
+			c.maximized_vertical = not clients[c].maximized_vertical
+		else
+			c.maximized_vertical = status
+		end
+	end
+end
+awful.tag.max_toggle = function()
+	local t = awful.tag.selected()
+	max_layout = not awful.tag.getproperty(t,"max_layout")
+	awful.tag.setproperty(t, "max_layout", max_layout)
+	if max_layout then
+		client.connect_signal("focus", awful.client.maximize)
+		if client.focus then
+			client.focus:emit_signal("focus")
+			client.focus:raise()
+		end
+	else
+		client.disconnect_signal("focus", awful.client.maximize)
+			clients = t:clients()
+		for c in pairs(clients) do
+			awful.client.maximize(clients[c],false)
+		end
+	end
+end
 
 -- No border for maximized clients
-client.connect_signal("focus",
-	function(c)
-		if c.maximized_horizontal == true and c.maximized_vertical == true then
-			c.border_color = beautiful.border_normal
-		else
-			c.border_color = beautiful.border_focus
-		end
-	end)
-client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
+client.connect_signal("focus", function(c)
+	if c.maximized_horizontal == true and c.maximized_vertical == true then
+		c.border_color = beautiful.border_normal
+	else
+		c.border_color = beautiful.border_focus
+	end
+end)
+client.connect_signal("unfocus", function(c)
+	c.border_color = beautiful.border_normal
+end)
 -- }}}
 
 -- {{{ Arrange signal handler
@@ -331,6 +381,7 @@ for s = 1, screen.count() do
 			end
 		end
 	end)
+--TODO: remove last_layout and similar stuff
 	--initialize visible tag for each screen
 	t = awful.tag.selected(s)
 	if t~=nil then

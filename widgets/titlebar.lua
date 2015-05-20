@@ -20,7 +20,8 @@ local function new(c, menu)
 		local infoBox = {}
 		infoBox.textbox = wibox.widget.textbox()
 		infoBox.reset_text = function(this)
-			local infoString = ""
+			local infoString = "" .. c.type
+			--[[
 			local space = ""
 			for k,v in ipairs(c:tags()) do
 				if infoString ~= "" then
@@ -28,6 +29,7 @@ local function new(c, menu)
 				end
 				infoString = infoString .. space .. v.name
 			end
+			---]]
 			this:set_text(infoString)
 		end
 		infoBox.set_text = function(this, text)

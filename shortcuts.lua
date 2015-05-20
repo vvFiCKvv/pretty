@@ -119,7 +119,7 @@ local function init()
 		awful.key({ module.modkey, "Shift"   }, "space",  function () awful.layout.inc(layouts, -1)  end),
 		awful.key({ module.modkey, "Control" }, "n",      awful.client.restore),
 		awful.key({ module.modkey,           }, "q", 
-		function()
+		function ()
 			local t = awful.tag.selected()
 			if awful.layout.get() == awful.layout.suit.floating then
 				if awful.layout.multiTags then
@@ -131,21 +131,7 @@ local function init()
 				awful.layout.set(awful.layout.suit.floating, t)
 			end
 		end ),
-		awful.key({ module.modkey,           }, "space", 
-		function()
-			local t = awful.tag.selected()
-			if awful.layout.get() == awful.layout.suit.max then
-				selectedTags = awful.tag.selectedlist(s)
-				if awful.layout.multiTags then
-					awful.layout.set(awful.layout.multiTags.last_layout)
-					
-				else
-					awful.layout.set(awful.tag.getproperty(t,"last_layout"))
-				end
-			else
-				awful.layout.set(awful.layout.suit.max, t)
-			end
-		end ),
+		awful.key({ module.modkey,           }, "space", awful.tag.max_toggle),
 
 		-- Standard program
 		awful.key({ module.modkey,           }, "Return", function () awful.util.spawn(module.terminal) end),
