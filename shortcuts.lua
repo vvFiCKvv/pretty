@@ -121,15 +121,7 @@ local function init()
 		awful.key({ module.modkey,           }, "q", 
 		function ()
 			local t = awful.tag.selected()
-			if awful.layout.get() == awful.layout.suit.floating then
-				if awful.layout.multiTags then
-					awful.layout.set(awful.layout.multiTags.last_layout)
-				else
-					awful.layout.set(awful.tag.getproperty(t,"last_layout"))
-				end
-			else
-				awful.layout.set(awful.layout.suit.floating, t)
-			end
+			awful.layout.floating_toggle(mouse.screen,t)
 		end ),
 		awful.key({ module.modkey,           }, "space", awful.tag.max_toggle),
 

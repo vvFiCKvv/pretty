@@ -1,6 +1,7 @@
 local ipairs = ipairs
 local type = type
 local awful = require("awful")
+snapshot = require("eucalyptus.snapshot")
 local capi = {
     awesome = awesome,
     root = root,

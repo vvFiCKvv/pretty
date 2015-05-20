@@ -2,6 +2,13 @@ local setmetatable = setmetatable
 local print,ipairs  = print,ipairs
 local awful     = require("awful")
 local beautiful = require("beautiful")
+
+local module = {
+	widgets = require("eucalyptus.widgets"),
+	menus = require("eucalyptus.menus"),
+	layout = require("eucalyptus.layout"),
+	snapshot = require("eucalyptus.snapshot")
+}
 --TODO: one timer per tag
 local switchTimer = { 
 	index = 1,
@@ -189,43 +196,29 @@ awful.screen.toggle = function (index)
 		awful.screen.toggle(index + 1)
 	end
 end
-awful.screen.take_snapshot = function (s)
-	tags = awful.tag.gettags(s)
-	awful.snapshot[s] = {}
-	for t in pairs(tags) do
-		-- may be need {unpack(tags[t]:clients())}
-		awful.snapshot[s][t] = tags[t]:clients()
-	end
-end
-awful.screen.restore_snapshot = function (s)
-	tags = awful.tag.gettags(s)
-	for t in pairs(tags) do
---		tags[t]:clients(awful.snapshot[s][t])
-		clients = awful.snapshot[s][t]
-		for c in pairs(clients) do
-			awful.client.movetotag(tags[t], clients[c])
-			awful.client.toggletag(tags[t], clients[c])
+
+awful.layout.floating_toggle = function (s,t)
+	if awful.tag.getproperty(t,"layout") == awful.layout.suit.floating then
+		if awful.layout.multiTags then
+			awful.layout.set(awful.layout.multiTags.last_layout)
+		else
+			snapshot.tag.restore("floating_toggle", s, t, {remove = true, targets = {layout = true}})
 		end
-		awful.snapshot[s][t] = nil
+	else
+		snapshot.tag.update("floating_toggle",s, t, {targets = {layout = true}})
+		awful.layout.set(awful.layout.suit.floating, t)
 	end
-	awful.snapshot[s] = nil
-end
-awful.snapshot = nil
-awful.take_snapshot = function ()
-	awful.snapshot = {}
-	for s = 1, screen.count() do -- for each screen 
-			awful.screen.take_snapshot(s)
+--[[	if snapshot.count("floating_toggle") == 0 then
+		snapshot.tag.update("floating_toggle",s, t {targets = {layout = true}})
+	else
+		snapshot.tag.restore("floating_toggle", s, t, {remove = true, targets = {layout = true}})
 	end
+---]]
 end
-awful.restore_snapshot = function ()
-	for s = 1, screen.count() do -- for each screen 
-			awful.screen.restore_snapshot(s)
-	end
-	awful.snapshot = nil
-end
+
 awful.tag.viewall_screens_toggle = function ()
-	if awful.snapshot == nil then
-		awful.take_snapshot()
+	if snapshot.count("viewall_screens_toggle") == 0 then
+		snapshot.update("viewall_screens_toggle", {targets = {client = true}})
 		awful.screen.move_all_clients()
 		awful.tag.viewall_toggle()
 	else
@@ -233,7 +226,7 @@ awful.tag.viewall_screens_toggle = function ()
 		c = awful.mouse.client_under_pointer()
 		awful.tag.viewall_toggle()
 		s0 =  mouse.screen
-		awful.restore_snapshot()
+		snapshot.restore("viewall_screens_toggle", {remove = true, targets = {client = true}})
 --		s1 = c.screen
 		awful.mouse.moveto_client(c,true)
 		s1 =  mouse.screen
@@ -399,8 +392,4 @@ end
 
 
 -- }}}
-return {
-	widgets = require("eucalyptus.widgets"),
-	menus = require("eucalyptus.menus"),
-	layout = require("eucalyptus.layout")
-}
+return module
