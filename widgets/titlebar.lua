@@ -10,6 +10,7 @@ local function new(c, menu)
     if titlebars_enabled and (c.type == "normal" or c.type == "dialog") then
 --TODO: Add more functionality
         -- buttons for the titlebar
+--TODO: on mouse grab disable maximization
         local buttons = awful.util.table.join(
                 awful.button({ }, 1, function()
                     client.focus = c
