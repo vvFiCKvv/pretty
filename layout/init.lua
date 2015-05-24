@@ -1,7 +1,7 @@
 local ipairs = ipairs
 local type = type
 local awful = require("awful")
-snapshot = require("eucalyptus.snapshot")
+snapshot = require("pretty.snapshot")
 local capi = {
     awesome = awesome,
     root = root,
@@ -14,8 +14,8 @@ local aclient = require("awful.client")
 
 --- Layout module for awful
 -- awful.layout
-local eucalyptus_layout = {
-	test = require("eucalyptus.layout.test")
+local pretty_layout = {
+	test = require("pretty.layout.test")
 }
 -- using code from official awesome git to port new functionality to 3.6.5 version
 -- https://github.com/awesomeWM/awesome/blob/98dd0d6b63c0b77b29f625dada299745ccccb444/lib/awful/mouse/init.lua.in
@@ -30,7 +30,7 @@ awful.mouse.client.resize = function(c, corner)
     if not c then return end
     c.maximized_horizontal = false
 	c.maximized_vertical = false
-	if awful.layout.get(c.screen) ~= eucalyptus_layout.test then
+	if awful.layout.get(c.screen) ~= pretty_layout.test then
 		return mouse_client_resize(c, corner)
 	end
 
@@ -54,7 +54,7 @@ awful.mouse.client.move = function(c, snap)
 	local c = c or capi.client.focus
 	c.maximized_horizontal = false
 	c.maximized_vertical = false
-	if awful.layout.get(c.screen) ~= eucalyptus_layout.test then
+	if awful.layout.get(c.screen) ~= pretty_layout.test then
 		return mouse_client_move(c, snap)
 	end
     if not c
@@ -86,4 +86,4 @@ awful.mouse.client.move = function(c, snap)
                           end, "fleur")
 end
 
-return eucalyptus_layout
+return pretty_layout

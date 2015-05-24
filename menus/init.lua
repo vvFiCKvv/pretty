@@ -1,4 +1,4 @@
 return {
-client=            require( "eucalyptus.menus.client" ),
-tag=            require( "eucalyptus.menus.tag" )
+client=            require( "pretty.menus.client" ),
+tag=            require( "pretty.menus.tag" )
 }

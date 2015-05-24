@@ -4,12 +4,12 @@ local awful     = require("awful")
 local beautiful = require("beautiful")
 
 local module = {
-	widgets = require("eucalyptus.widgets"),
-	menus = require("eucalyptus.menus"),
-	layout = require("eucalyptus.layout"),
-	snapshot = require("eucalyptus.snapshot")
+	widgets = require("pretty.widgets"),
+	menus = require("pretty.menus"),
+	layout = require("pretty.layout"),
+	snapshot = require("pretty.snapshot")
 }
---require("eucalyptus.layout")
+--require("pretty.layout")
 --TODO: one timer per tag
 local switchTimer = { 
 	index = 1,
