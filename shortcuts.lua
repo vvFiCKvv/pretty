@@ -2,6 +2,7 @@ local setmetatable = setmetatable
 local print,ipairs  = print,ipairs
 
 local awful     = require("awful")
+local beautiful = require("beautiful")
 local drop      = require("scratchdrop")
 
 local module = {}
@@ -16,6 +17,7 @@ module.editor     = os.getenv("EDITOR") or "nano" or "vi"
 module.editor_cmd = module.terminal .. " -e " .. module.editor
 
 -- user defined
+module.launcher =  function () return "dmenu_run  -m " .. mouse.screen - 1 .. "-i -b -nb '" .. beautiful.bg_normal .. "' -sb '" .. beautiful.bg_focus .. "'" end
 module.browser    = "google-chrome-unstable"
 module.browser2   = "firefox"
 module.gui_editor = "geany"
@@ -29,7 +31,6 @@ local function init()
 		-- https://github.com/copycat-killer/dots/blob/master/bin/screenshot
 	--TODO: copy it from cinnamon
 		awful.key({ module.altkey }, "p", function() os.execute("screenshot") end),
-
 		-- Tag browsing
 		awful.key({ module.modkey }, "Left",   awful.tag.viewprev       ),
 		awful.key({ module.modkey }, "Right",  awful.tag.viewnext       ),
@@ -123,7 +124,7 @@ local function init()
 			local t = awful.tag.selected()
 			awful.layout.floating_toggle(mouse.screen,t)
 		end ),
-		awful.key({ module.modkey,           }, "space", awful.tag.max_toggle),
+		awful.key({ module.modkey,           }, "space", function () awful.tag.max_toggle("toggle") end),
 
 		-- Standard program
 		awful.key({ module.modkey,           }, "Return", function () awful.util.spawn(module.terminal) end),
@@ -189,6 +190,8 @@ local function init()
 
 		---- User programs
 		--awful.key({ module.modkey }, "q", function () awful.util.spawn(module.browser) end),
+		awful.key({ module.modkey }, "Escape", function () awful.util.spawn(module.launcher()) end),
+		awful.key({ module.modkey, "Shift" }, "Escape", function () awful.util.spawn("qmenu_hud") end),
 		--awful.key({ module.modkey }, "i", function () awful.util.spawn(module.browser2) end),
 		--awful.key({ module.modkey }, "s", function () awful.util.spawn(module.gui_editor) end),
 		--awful.key({ module.modkey }, "g", function () awful.util.spawn(module.graphics) end),

@@ -28,6 +28,8 @@ awful.mouse.client.resize = function(c, corner)
     local c = c or awfulz.client.focus
 
     if not c then return end
+    c.maximized_horizontal = false
+	c.maximized_vertical = false
 	if awful.layout.get(c.screen) ~= eucalyptus_layout.test then
 		return mouse_client_resize(c, corner)
 	end
@@ -47,12 +49,14 @@ local mouse_client_move = awful.mouse.client.move
 --- Move a client.
 -- @param c The client to move, or the focused one if nil.
 -- @param snap The pixel to snap clients.
+
 awful.mouse.client.move = function(c, snap)
 	local c = c or capi.client.focus
+	c.maximized_horizontal = false
+	c.maximized_vertical = false
 	if awful.layout.get(c.screen) ~= eucalyptus_layout.test then
 		return mouse_client_move(c, snap)
 	end
-
     if not c
         or c.fullscreen
         or c.type == "desktop"

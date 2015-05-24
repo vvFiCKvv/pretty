@@ -5,6 +5,20 @@ local wibox     = require( "wibox"                   )
 local beautiful = require( "beautiful"               )
 local radical = require("radical")
 local module = {}
+module.widget = {}
+--- Create a new maximize button for a client.
+-- @param c The client for which the button is wanted.
+module.widget.maximizedbutton = function(c)
+    local widget = titlebar.widget.button(c, "maximized", function(c)
+        return c.maximized_horizontal or c.maximized_vertical
+    end, function(c, state)
+        c.maximized_horizontal = not state
+        c.maximized_vertical = not state
+    end)
+    c:connect_signal("property::maximized_vertical", widget.update)
+    c:connect_signal("property::maximized_horizontal", widget.update)
+    return widget
+end
 local function new(c, menu)
 	local titlebars_enabled = beautiful.titlebar_enabled == nil and true or beautiful.titlebar_enabled
     if titlebars_enabled and (c.type == "normal" or c.type == "dialog") then
@@ -21,7 +35,7 @@ local function new(c, menu)
 		local infoBox = {}
 		infoBox.textbox = wibox.widget.textbox()
 		infoBox.reset_text = function(this)
-			local infoString = "" .. c.type
+			local infoString = "" .. c.window
 			--[[
 			local space = ""
 			for k,v in ipairs(c:tags()) do

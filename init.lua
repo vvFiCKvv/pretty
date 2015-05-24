@@ -9,6 +9,7 @@ local module = {
 	layout = require("eucalyptus.layout"),
 	snapshot = require("eucalyptus.snapshot")
 }
+--require("eucalyptus.layout")
 --TODO: one timer per tag
 local switchTimer = { 
 	index = 1,
@@ -198,9 +199,9 @@ end
 
 awful.layout.floating_toggle = function (s,t)
 	if awful.tag.getproperty(t,"layout") == awful.layout.suit.floating then
-		if awful.layout.multiTags then
---TODO: multitag
---			awful.layout.set(awful.layout.multiTags.last_layout)
+		if awful.layout.multi_tags then
+--TODO: multi_tag
+--			awful.layout.set(awful.layout.multi_tags.last_layout)
 		else
 			snapshot.tag.restore("floating_toggle", s, t, {remove = true, targets = {layout = true}})
 		end
@@ -247,12 +248,10 @@ awful.client.maximize = function(c, status, orientation, filter)
 	if orientation == nil then 
 		orientation = "both"
 	end
-	if status == nil or status == "true" then
+	if status == nil then
 		status = true
 	end
-	if status == "false" then
-		status = false
-	end
+	c:disconnect_signal("property::maximized_vertical", awful.tag.max_toggle)
 	if orientation == "horizontal" or orientation == "both" then
 		if status == "toggle" then
 			c.maximized_horizontal = not clients[c].maximized_horizontal
@@ -267,12 +266,25 @@ awful.client.maximize = function(c, status, orientation, filter)
 			c.maximized_vertical = status
 		end
 	end
+	if orientation == "both" and status == true then
+		c:connect_signal("property::maximized_vertical", awful.tag.max_toggle)
+	end
 end
-awful.tag.max_toggle = function()
+awful.tag.max_toggle = function(status)
 	local t = awful.tag.selected()
-	max_layout = not awful.tag.getproperty(t,"max_layout")
-	awful.tag.setproperty(t, "max_layout", max_layout)
-	if max_layout then
+	if status == nil then
+		status = false
+	end
+	if status == "toggle" then
+		status = not awful.tag.getproperty(t,"max_layout")
+	end
+	if status ~= true and status ~=false then
+		status = false
+	end
+	awful.tag.setproperty(t, "max_layout", status)
+	if status then
+		-- prevent double connection
+		client.disconnect_signal("focus", awful.client.maximize)
 		client.connect_signal("focus", awful.client.maximize)
 		if client.focus then
 			client.focus:emit_signal("focus")
@@ -280,7 +292,7 @@ awful.tag.max_toggle = function()
 		end
 	else
 		client.disconnect_signal("focus", awful.client.maximize)
-			clients = t:clients()
+		clients = t:clients()
 		for c in pairs(clients) do
 			awful.client.maximize(clients[c],false)
 		end
@@ -319,97 +331,59 @@ for s = 1, screen.count() do screen[s]:connect_signal("arrange", function ()
         end
       end)
 end
-local signal_arrange_float =  function ()
-		local s = mouse.screen
-        local layout  = awful.layout.getname(awful.layout.get(s))
----[[
-		if layout == "floating" then
-			t = awful.tag.selected(s)
-			if t ~= nil then
-				snapshot.tag.update("history_update", s, t, {targets = {geometry = true}})
-			end
-		end
----]]
-end
 ---[[
 --TODO: multiple tags selection have its one history like a meta-tag fixes needing
 for s = 1, screen.count() do
 	screen[s]:connect_signal("tag::history::update", function()
-	old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
-	snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
-	active_tag = awful.tag.selected(s)
-	if active_tag ~=nil then
-		old_tag_layout = snapshot.tag.get("history_update", s, active_tag, {targets = {layout = true}})
-		if #awful.tag.selectedlist(s) > 1 then
---			print("multiTag")
-			snapshot.screen.update("history_update", s, {multiTag = {true}})
-snapshot.tag.restore("history_update", s, active_tag, {targets = {layout = true}})
-		else
-			if snapshot.screen.get("history_update", s, {multiTag = {}}) then
---				print("exit from multiTag")
-snapshot.tag.update("history_update", s, active_tag, {targets = {layout = true}})
-				snapshot.screen.update("history_update", s, {multiTag = {false}})
-				snapshot.tag.restore("history_update", s, old_tag, {targets = {layout = true}})
+		old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
+		snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
+		active_tag = awful.tag.selected(s)
+		if active_tag ~=nil then
+			old_tag_layout = snapshot.tag.get("history_update", s, active_tag, {targets = {layout = true}})
+			if #awful.tag.selectedlist(s) > 1 then
+	--			print("multi_tag")
+				snapshot.screen.update("history_update", s, {multi_tag = {true}})
+	snapshot.tag.restore("history_update", s, active_tag, {targets = {layout = true}})
 			else
-				snapshot.tag.update("history_update", s, active_tag, {targets = {layout = true}})
+				if snapshot.screen.get("history_update", s, {multi_tag = {}}) then
+	--				print("exit from multi_tag")
+	snapshot.tag.update("history_update", s, active_tag, {targets = {layout = true}})
+					snapshot.screen.update("history_update", s, {multi_tag = {false}})
+					snapshot.tag.restore("history_update", s, old_tag, {targets = {layout = true}})
+				else
+					snapshot.tag.update("history_update", s, active_tag, {targets = {layout = true}})
+				end
+	--			print("singelTag")
 			end
---			print("singelTag")
-		end
-
-		active_layout = awful.tag.getproperty(active_tag,"layout")
-		if active_layout.name == "floating" then
+	--TODO: fix bugs
+			active_layout = awful.tag.getproperty(active_tag,"layout")
+			if active_layout.name == "floating" then
+				print("new tag is floating")
+--				snapshot.tag.restore("history_update", s, active_tag, {targets = {geometry = true}})
+			end
 			snapshot.tag.restore("history_update", s, active_tag, {targets = {geometry = true}})
-			print("connect_signal")
---TODO: prevent from connect twice with a counter
-			screen[s]:disconnect_signal("arrange", signal_arrange_float)
-			screen[s]:connect_signal("arrange", signal_arrange_float)
-		else
-			print("disconnect_signal")
-			screen[s]:disconnect_signal("arrange", signal_arrange_float)
 		end
-		
-		
-	end
---[[if old_tag ~= nil then
-		old_layout = awful.tag.getproperty(old_tag,"layout")
---		print("history_update: old tag:" .. old_tag.name .. " layout:" .. old_layout.name .. " new tag:" .. active_tag.name)
-		if old_layout.name == "floating" then
-			snapshot.tag.restore("history_update", s, old_tag, {targets = {geometry = true}})
-		end
-	end
----]]
---[[		t = awful.tag.selected(s)
-		if t~=nil then
-			selectedTags = awful.tag.selectedlist(s)
-			if #selectedTags > 1 then -- multiple tags selected
-				if awful.layout.get() ~= awful.layout.suit.floating and  awful.layout.get() ~= awful.layout.suit.max then
-					awful.layout.multiTags = {}
-					awful.layout.multiTags.last_layout =  awful.layout.get()
-				end
-			else -- single tag selected
-				if awful.layout.multiTags ~= nil then -- deselecting multiple tags
-						awful.layout.multiTags = nil
-					end
-				end
-			   --TODO:Correct the focus
-				c = awful.mouse.client_under_pointer()
-				if c ~= nil then
-					if c:isvisible() == false then
-					else
-						client.focus = c
-						client.focus:raise()
-					end
-				end
-					--awful.client.focus.byidx(-1)
+	end)
+	screen[s]:connect_signal("arrange", function ()
+		local s = mouse.screen
+		local layout  = awful.layout.getname(awful.layout.get(s))
+	---[[
+		t = awful.tag.selected(s)
+		old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
+		if t ~= nil and old_tag == t then
+			if layout == "floating" then
+				snapshot.tag.update("history_update", s, t, {targets = {geometry = true}})
+			else
+				snapshot.tag.update("history_update", s, t, {targets = {geometry = true}})
 			end
 		end
----]]
+	---]]
 	end)
 end
 --]]
 --local tag = require("awful.tag")
 local function tag_history_count(screen, idx)
-	local s = screen or capi.mouse.screen
+	local s = screen or mouse.screen
 	return #data.history[s]
 end
 --awful.tag.history.restore = tag_history_count

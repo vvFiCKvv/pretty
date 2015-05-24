@@ -20,7 +20,10 @@ local implements = {
 	end,
 	client = function () return {
 		geometry = {},
-		class = ""
+		class = "",
+		maximized_vertical = nil,
+		maximized_horizontal = nil,
+		fullscreen = nil
 	}
 	end,
 	snapshot = function () return {
@@ -34,25 +37,40 @@ local function new()
 	
 end
 local print_status = function(func, name, s, t, c, g, options)
+	if false then 
+		return
+	end
 	result = "<"
 	result = result .. func
 	result = result .. "> name:" .. name
 	result = result .." screen: " .. s
 	if snapshot[name] ~= nil and snapshot[name].screen[s] ~= nil and snapshot[name].screen[s].multi_tag then
-		result = result .. " multitag"
+		result = result .. " multi_tag"
 	end
 	if t ~=nil then
 		result = result .." tag: " .. t.name
 	end
 	if c ~=nil then
-		result = result .." client: " .. c.pid
+		result = result .." client: " .. c.window
 	end
 	if g ~=nil then
-		result = result ..  g.x .. ", " ..g.y .. ", " .. g.width .. ", " .. g.height
+		result = result .. " geometry: "..  g.x .. ", " ..g.y .. ", " .. g.width .. ", " .. g.height
 	end
 	if options ~=nil and options.targets ~= nil and options.targets.layout then
 		result = result .." layout"
 	end
+	if options ~=nil and options.targets ~= nil and options.targets.active_tag then
+		result = result .." active_tag"
+	end
+		if options ~=nil and options.targets ~= nil and options.targets.multi_tag then
+		result = result .." multi_tag"
+	end
+	
+	if options ~=nil and options.targets ~= nil and options.targets.geometry then
+		result = result .." geometry"
+	end
+	
+--	result = result .. debug.traceback()
 	print(result)
 end
 module.client = {}
@@ -62,17 +80,23 @@ module.client.update = function (name, s, t, c, options)
 	if snapshot[name].screen[s].multi_tag then
 		tag_data = snapshot[name].screen[s].multi_tag
 	end
-	tag_data.client[c.pid] = implements.client()
-	tag_data.client[c.pid].geometry = c:geometry()
+	tag_data.client[c.window] = implements.client()
+	tag_data.client[c.window].geometry = c:geometry()
+	tag_data.client[c.window].maximized_vertical = c.maximized_vertical
+	tag_data.client[c.window].maximized_horizontal = c.maximized_horizontal
+	tag_data.client[c.window].fullscreen = c.fullscreen
 end
 module.client.restore = function (name, s, t, c, options)
 	local tag_data = snapshot[name].screen[s].tag[t.name]
 	if snapshot[name].screen[s].multi_tag then
 		tag_data = snapshot[name].screen[s].multi_tag
 	end
-	if tag_data.client[c.pid] ~= nil then
-		g = tag_data.client[c.pid].geometry
+	if tag_data.client[c.window] ~= nil then
+		g = tag_data.client[c.window].geometry
 		c:geometry(g)
+		c.maximized_vertical = tag_data.client[c.window].maximized_vertical
+		c.maximized_horizontal = tag_data.client[c.window].maximized_horizontal
+		c.fullscreen = tag_data.client[c.window].fullscreen
 	end
 	print_status("client.restore", name, s, t, c, g,options)
 end
@@ -96,7 +120,6 @@ module.tag.update =  function (name, s, t, options)
 		tag_data.client =  t:clients()
 	end
 --TODO: add cords and move clients to client table
---	print("save name: " .. name .. " screen: " .. s .. " tag: " .. t.name .. " client: ", snapshot[name].screen[s].tag[t].client)
 	if options and options.targets and options.targets.layout == true then
 		tag_data.layout = awful.tag.getproperty(t,"layout")
 	end
@@ -164,8 +187,8 @@ print_status("screen.update", name, s, t, c, g,options)
 	if snapshot[name].screen[s] == nil then
 		snapshot[name].screen[s] = implements.screen()
 	end
-	if options and options.multiTag then
-		if options.multiTag[1] == true then
+	if options and options.multi_tag then
+		if options.multi_tag[1] == true then
 			if snapshot[name].screen[s].multi_tag == nil then
 				snapshot[name].screen[s].multi_tag = implements.tag{}
 			end
@@ -207,7 +230,7 @@ print_status("screen.get", name, s, t, c, g,options)
 	if options and options.targets and options.targets.active_tag == true then
 		result = snapshot[name].screen[s].active_tag
 	end
-	if options and options.multiTag then
+	if options and options.multi_tag then
 		result = not (snapshot[name].screen[s].multi_tag == nil)
 	end
 	return result
