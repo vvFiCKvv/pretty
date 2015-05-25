@@ -7,7 +7,18 @@ local module = {
 	widgets = require("pretty.widgets"),
 	menus = require("pretty.menus"),
 	layout = require("pretty.layout"),
-	snapshot = require("pretty.snapshot")
+	snapshot = require("pretty.snapshot"),
+	mouse = {},
+	client = {
+		focus = {
+			history = {}
+		}
+	},
+	tag = {
+		history = {}
+	},
+	screen = {},
+	layout = {}
 }
 --require("pretty.layout")
 --TODO: one timer per tag
@@ -43,7 +54,7 @@ local switchTimer = {
 
 --- Move mouse to center of a client
 -- @param a client to move the mouse.
-awful.mouse.moveto_client = function (c, togle_tag_enabled)
+module.mouse.moveto_client = function (c, togle_tag_enabled)
 	mCords = mouse.coords()
 	cCords = c:geometry()
 	if mCords.x < cCords.x or mCords.y < cCords.y
@@ -59,7 +70,7 @@ awful.mouse.moveto_client = function (c, togle_tag_enabled)
 end
 
 --- Switch client history backwards.
-awful.client.focus.history.switch = function (multiple_switch_enabled, mouse_move_enabled)
+module.client.focus.history.switch = function (multiple_switch_enabled, mouse_move_enabled)
 	if multiple_switch_enabled then
 		if switchTimer.type ~= switchTimer.types.client 
 		or switchTimer.screen ~= mouse.screen 
@@ -90,16 +101,48 @@ awful.client.focus.history.switch = function (multiple_switch_enabled, mouse_mov
 	if c then
 		client.focus = c
 		if mouse_move_enabled then
-			awful.mouse.moveto_client(c)
+			module.mouse.moveto_client(c)
 		end
 	end
 	if client.focus then
 		client.focus:raise()
 	end
 end
+module.client.maximize = function(c, status, orientation, filter)
+	if filter == nil then
+		filter = "normal"
+	end
+	if c.type ~= filter and filter~="all" then
+		return
+	end
+	if orientation == nil then 
+		orientation = "both"
+	end
+	if status == nil then
+		status = true
+	end
+	c:disconnect_signal("property::maximized_vertical", module.tag.max_toggle)
+	if orientation == "horizontal" or orientation == "both" then
+		if status == "toggle" then
+			c.maximized_horizontal = not clients[c].maximized_horizontal
+		else
+			c.maximized_horizontal = status
+		end
+	end
+	if orientation == "vertical" or orientation == "both" then
+		if status == "toggle" then
+			c.maximized_vertical = not clients[c].maximized_vertical
+		else
+			c.maximized_vertical = status
+		end
+	end
+	if orientation == "both" and status == true then
+		c:connect_signal("property::maximized_vertical", module.tag.max_toggle)
+	end
+end
 --- Switch tag history backwards.
 --- mouse.screen fails if a tag has none clients.
-awful.tag.history.switch = function()
+module.tag.history.switch = function()
 	if switchTimer.type ~= switchTimer.types.tag 
 	or switchTimer.screen ~= mouse.screen  then
 		switchTimer:clear()
@@ -116,7 +159,7 @@ awful.tag.history.switch = function()
 end
 
 --- toggle active's screen tags between all tags and tags where focus client is
-awful.tag.viewall_toggle = function ()
+module.tag.viewall_toggle = function ()
 --TODO: use lain.layout.uselessfair
 	-- mouse.screen fails if a tag has none clients.
 	s = mouse.screen
@@ -137,12 +180,63 @@ awful.tag.viewall_toggle = function ()
 		currentLayout = awful.layout.get() -- get the current layout
 		if currentLayout == awful.layout.suit.floating then
 			t=awful.tag.selected() -- get the 1st selected tag
-			awful.layout.floating_toggle(s,t)
+			module.layout.floating_toggle(s,t)
 		end
 	end
 end
+
+module.tag.max_toggle = function(status)
+	local t = awful.tag.selected()
+	if status == nil then
+		status = false
+	end
+	if status == "toggle" then
+		status = not awful.tag.getproperty(t,"max_layout")
+	end
+	if status ~= true and status ~=false then
+		status = false
+	end
+	awful.tag.setproperty(t, "max_layout", status)
+	if status then
+		-- prevent double connection
+		client.disconnect_signal("focus", module.client.maximize)
+		client.connect_signal("focus", module.client.maximize)
+		if client.focus then
+			client.focus:emit_signal("focus")
+			client.focus:raise()
+		end
+	else
+		client.disconnect_signal("focus", module.client.maximize)
+		clients = t:clients()
+		for c in pairs(clients) do
+			module.client.maximize(clients[c],false)
+		end
+	end
+end
+
+module.tag.viewall_screens_toggle = function ()
+	if snapshot.count("viewall_screens_toggle") == 0 then
+		snapshot.update("viewall_screens_toggle", {targets = {client = true, tags = true}})
+		module.screen.move_all_clients()
+		module.tag.viewall_toggle()
+	else
+--TODO: focus client and client's tag, move mouse to client's screen or move screens to mouse
+		c = awful.mouse.client_under_pointer()
+		module.tag.viewall_toggle()
+		s0 =  mouse.screen
+		snapshot.restore("viewall_screens_toggle", {remove = true, targets = {client = true, tags = true}})
+--		s1 = c.screen
+		module.mouse.moveto_client(c,true)
+		s1 =  mouse.screen
+
+		awful.screen.toggle(s0 - s1)
+		
+--		awful.tag.viewmore(c:tags())
+		module.mouse.moveto_client(c, true)
+	end
+end
 --- move all clients to the active screen
-awful.screen.move_all_clients = function ()
+module.screen.move_all_clients = function ()
 --TODO: use awful.screen getbycoord (x, y, default)	 Return Xinerama screen number corresponding to the given (pixel) coordinates.
 	activeScreen =  mouse.screen
 	activeScreenTags = awful.tag.gettags(s) -- all tags of current screen
@@ -165,7 +259,7 @@ awful.screen.move_all_clients = function ()
 end
 --- toggle screens
 -- @param index how many times it will move, < 0 for counter-clock wise > 0 for clock wise
-awful.screen.toggle = function (index)
+module.screen.toggle = function (index)
 	if index == 0 then
 		return 
 	end
@@ -197,7 +291,13 @@ awful.screen.toggle = function (index)
 	end
 end
 
-awful.layout.floating_toggle = function (s,t)
+module.layout.floating_toggle = function (s,t)
+	if s == nil then
+		s = mouse.screen
+	end
+	if t == nil then
+		t = awful.tag.selected()
+	end
 	if awful.tag.getproperty(t,"layout") == awful.layout.suit.floating then
 		if awful.layout.multi_tags then
 --TODO: multi_tag
@@ -217,87 +317,7 @@ awful.layout.floating_toggle = function (s,t)
 ---]]
 end
 
-awful.tag.viewall_screens_toggle = function ()
-	if snapshot.count("viewall_screens_toggle") == 0 then
-		snapshot.update("viewall_screens_toggle", {targets = {client = true, tags = true}})
-		awful.screen.move_all_clients()
-		awful.tag.viewall_toggle()
-	else
---TODO: focus client and client's tag, move mouse to client's screen or move screens to mouse
-		c = awful.mouse.client_under_pointer()
-		awful.tag.viewall_toggle()
-		s0 =  mouse.screen
-		snapshot.restore("viewall_screens_toggle", {remove = true, targets = {client = true, tags = true}})
---		s1 = c.screen
-		awful.mouse.moveto_client(c,true)
-		s1 =  mouse.screen
 
-		awful.screen.toggle(s0 - s1)
-		
---		awful.tag.viewmore(c:tags())
-		awful.mouse.moveto_client(c, true)
-	end
-end
-awful.client.maximize = function(c, status, orientation, filter)
-	if filter == nil then
-		filter = "normal"
-	end
-	if c.type ~= filter and filter~="all" then
-		return
-	end
-	if orientation == nil then 
-		orientation = "both"
-	end
-	if status == nil then
-		status = true
-	end
-	c:disconnect_signal("property::maximized_vertical", awful.tag.max_toggle)
-	if orientation == "horizontal" or orientation == "both" then
-		if status == "toggle" then
-			c.maximized_horizontal = not clients[c].maximized_horizontal
-		else
-			c.maximized_horizontal = status
-		end
-	end
-	if orientation == "vertical" or orientation == "both" then
-		if status == "toggle" then
-			c.maximized_vertical = not clients[c].maximized_vertical
-		else
-			c.maximized_vertical = status
-		end
-	end
-	if orientation == "both" and status == true then
-		c:connect_signal("property::maximized_vertical", awful.tag.max_toggle)
-	end
-end
-awful.tag.max_toggle = function(status)
-	local t = awful.tag.selected()
-	if status == nil then
-		status = false
-	end
-	if status == "toggle" then
-		status = not awful.tag.getproperty(t,"max_layout")
-	end
-	if status ~= true and status ~=false then
-		status = false
-	end
-	awful.tag.setproperty(t, "max_layout", status)
-	if status then
-		-- prevent double connection
-		client.disconnect_signal("focus", awful.client.maximize)
-		client.connect_signal("focus", awful.client.maximize)
-		if client.focus then
-			client.focus:emit_signal("focus")
-			client.focus:raise()
-		end
-	else
-		client.disconnect_signal("focus", awful.client.maximize)
-		clients = t:clients()
-		for c in pairs(clients) do
-			awful.client.maximize(clients[c],false)
-		end
-	end
-end
 
 -- No border for maximized clients
 client.connect_signal("focus", function(c)
@@ -381,14 +401,6 @@ for s = 1, screen.count() do
 	end)
 end
 --]]
---local tag = require("awful.tag")
-local function tag_history_count(screen, idx)
-	local s = screen or mouse.screen
-	return #data.history[s]
-end
---awful.tag.history.restore = tag_history_count
-
-
 
 -- }}}
 return module
