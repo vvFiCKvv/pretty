@@ -119,6 +119,10 @@ module.client.maximize = function(c, status, orientation, filter)
 		orientation = "both"
 	end
 	if status == nil then
+		local t = awful.tag.selected()
+		if awful.tag.getproperty(t,"max_layout") ~= true then
+			return
+		end
 		status = true
 	end
 	c:disconnect_signal("property::maximized_vertical", module.tag.max_toggle)
@@ -162,11 +166,11 @@ end
 module.tag.viewall_toggle = function ()
 --TODO: use lain.layout.uselessfair
 	-- mouse.screen fails if a tag has none clients.
-	s = mouse.screen
-	tags = awful.tag.gettags(s) -- all tags of current screen
-	selectedTags = awful.tag.selectedlist(s) -- get the tags witch are selected
+	local s = mouse.screen
+	local tags = awful.tag.gettags(s) -- all tags of current screen
+	local selectedTags = awful.tag.selectedlist(s) -- get the tags witch are selected
 	if #tags==#selectedTags then -- all tags of the current screen are selected
-		c=awful.mouse.client_under_pointer() -- get the client under the mouse
+		local c = awful.mouse.client_under_pointer() -- get the client under the mouse
 		if c ~=nil then -- view only the tag witch the client under the mouse is
 			awful.tag.viewmore(c:tags(),s)
 			if client.focus then
@@ -177,9 +181,9 @@ module.tag.viewall_toggle = function ()
 		end
 	else -- select all the tags of the current screen
 		awful.tag.viewmore(tags,s)
-		currentLayout = awful.layout.get() -- get the current layout
+		local currentLayout = awful.layout.get() -- get the current layout
 		if currentLayout == awful.layout.suit.floating then
-			t=awful.tag.selected() -- get the 1st selected tag
+			local t=awful.tag.selected() -- get the 1st selected tag
 			module.layout.floating_toggle(s,t)
 		end
 	end
@@ -207,7 +211,7 @@ module.tag.max_toggle = function(status)
 		end
 	else
 		client.disconnect_signal("focus", module.client.maximize)
-		clients = t:clients()
+		local clients = t:clients()
 		for c in pairs(clients) do
 			module.client.maximize(clients[c],false)
 		end
@@ -216,37 +220,40 @@ end
 
 module.tag.viewall_screens_toggle = function ()
 	if snapshot.count("viewall_screens_toggle") == 0 then
-		snapshot.update("viewall_screens_toggle", {targets = {client = true, tags = true}})
+		snapshot.update("viewall_screens_toggle", {targets = {client = true, tags = true, geometry = true}})
 		module.screen.move_all_clients()
 		module.tag.viewall_toggle()
 	else
 --TODO: focus client and client's tag, move mouse to client's screen or move screens to mouse
-		c = awful.mouse.client_under_pointer()
+		local c = awful.mouse.client_under_pointer()
 		module.tag.viewall_toggle()
-		s0 =  mouse.screen
-		snapshot.restore("viewall_screens_toggle", {remove = true, targets = {client = true, tags = true}})
---		s1 = c.screen
-		module.mouse.moveto_client(c,true)
-		s1 =  mouse.screen
+		local s0 =  mouse.screen
+		snapshot.restore("viewall_screens_toggle", {remove = true, targets = {client = true, tags = true, geometry = true}})
+		if c ~= nil then
+			module.mouse.moveto_client(c,true)
+		end
+		local s1 =  mouse.screen
 
-		awful.screen.toggle(s0 - s1)
+--		module.screen.toggle(s0 - s1)
 		
 --		awful.tag.viewmore(c:tags())
-		module.mouse.moveto_client(c, true)
+		if c ~= nil then
+			module.mouse.moveto_client(c, true)
+		end
 	end
 end
 --- move all clients to the active screen
 module.screen.move_all_clients = function ()
 --TODO: use awful.screen getbycoord (x, y, default)	 Return Xinerama screen number corresponding to the given (pixel) coordinates.
-	activeScreen =  mouse.screen
-	activeScreenTags = awful.tag.gettags(s) -- all tags of current screen
+	local activeScreen =  mouse.screen
+	local activeScreenTags = awful.tag.gettags(s) -- all tags of current screen
 	for s = 1, screen.count() do -- for each screen 
-		if s~=activeScreen then -- except active screen
+		if s ~= activeScreen then -- except active screen
 			tags = awful.tag.gettags(s) -- all tags of current screen
 			for t in pairs(tags) do
-				clients = tags[t]:clients()
+				local clients = tags[t]:clients()
 				for c in pairs(clients) do
-					if t <= #activeScreenTags then -- move the clients to corresponding tags
+					if t <= #activeScreenTags and false then -- move the clients to corresponding tags
 						awful.client.movetotag(activeScreenTags[t], clients[c])
 						awful.client.toggletag(activeScreenTags[t], clients[c])
 					else -- move clients to active tag
@@ -264,13 +271,13 @@ module.screen.toggle = function (index)
 		return 
 	end
 	if index > 0 then
-		return awful.screen.toggle(index - screen.count())
+		return module.screen.toggle(index - screen.count())
 	end
-	firstScreenTags =  awful.tag.gettags(1) -- all tags of 1st screen
-	selectedTagsList = {} -- a list of selected tags list per screen
+	local firstScreenTags =  awful.tag.gettags(1) -- all tags of 1st screen
+	local selectedTagsList = {} -- a list of selected tags list per screen
 	table.insert(selectedTagsList, awful.tag.selectedlist(1)) -- add selected tags of 1st screen
 	for s = 2, screen.count() do -- for each screen from 2nt to last move tags and selected tags to the previous screen
-		tags = awful.tag.gettags(s) -- all tags of current screen
+		local tags = awful.tag.gettags(s) -- all tags of current screen
 		table.insert(selectedTagsList, awful.tag.selectedlist(s)) -- add selected tags list of current screen
 		for t in pairs(tags) do -- for each tag
 			awful.tag.setscreen(tags[t],s - 1) -- move tags to previous screen
@@ -287,7 +294,7 @@ module.screen.toggle = function (index)
 		end
 	end
 	if index ~= -1 then
-		awful.screen.toggle(index + 1)
+		module.screen.toggle(index + 1)
 	end
 end
 
@@ -355,11 +362,11 @@ end
 --TODO: multiple tags selection have its one history like a meta-tag fixes needing
 for s = 1, screen.count() do
 	screen[s]:connect_signal("tag::history::update", function()
-		old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
+		local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
 		snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
-		active_tag = awful.tag.selected(s)
+		local active_tag = awful.tag.selected(s)
 		if active_tag ~=nil then
-			old_tag_layout = snapshot.tag.get("history_update", s, active_tag, {targets = {layout = true}})
+			local old_tag_layout = snapshot.tag.get("history_update", s, active_tag, {targets = {layout = true}})
 			if #awful.tag.selectedlist(s) > 1 then
 	--			print("multi_tag")
 				snapshot.screen.update("history_update", s, {multi_tag = {true}})
@@ -376,7 +383,7 @@ for s = 1, screen.count() do
 	--			print("singelTag")
 			end
 	--TODO: fix bugs
-			active_layout = awful.tag.getproperty(active_tag,"layout")
+			local active_layout = awful.tag.getproperty(active_tag,"layout")
 			if active_layout.name == "floating" then
 				print("new tag is floating")
 --				snapshot.tag.restore("history_update", s, active_tag, {targets = {geometry = true}})
@@ -386,18 +393,18 @@ for s = 1, screen.count() do
 	end)
 	screen[s]:connect_signal("arrange", function ()
 		local s = mouse.screen
-		local layout  = awful.layout.getname(awful.layout.get(s))
 	---[[
-		t = awful.tag.selected(s)
-		old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
+		local t = awful.tag.selected(s)
+		local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
 		if t ~= nil and old_tag == t then
+			local layout  = awful.layout.getname(awful.layout.get(s))
 			if layout == "floating" then
 				snapshot.tag.update("history_update", s, t, {targets = {geometry = true}})
 			else
 				snapshot.tag.update("history_update", s, t, {targets = {geometry = true}})
 			end
 		end
-	---]]
+	---]]---[[
 	end)
 end
 --]]
