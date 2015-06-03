@@ -15,7 +15,8 @@ local implements = {
 	tag = function () return {
 		client = {},
 		layout = nil,
-		name = ""
+		name = "",
+		max_layout = false
 	} end,
 	history = function () return {
 		tag = {},
@@ -93,7 +94,8 @@ function debug_status(func)
 end
 ---]]
 local print_status = function(func, name, s, t, c, g, options)
-	if true then 
+	if true then
+	--if func ~= "client.update" and func ~= "client.restore" then 
 		return
 	end
 	debug_status(func)
@@ -152,6 +154,7 @@ module.tag.update =  function (name, s, t, options)
 	end
 	if options and options.targets and options.targets.layout == true then
 		tag_data.layout = awful.tag.getproperty(t,"layout")
+		tag_data.max_layout = awful.tag.getproperty(t, "max_layout")
 	end
 	if options and options.targets and options.targets.geometry == true then
 		local clients = t:clients()
@@ -198,6 +201,7 @@ module.tag.restore = function (name, s, t, options)
 	end
 	if options and options.targets and options.targets.layout == true  and tag_data.layout ~= nil then
 		awful.tag.setproperty(t,"layout", tag_data.layout)
+		awful.tag.setproperty(t, "max_layout", tag_data.max_layout)
 	end
 	if options and options.targets and options.targets.geometry == true then
 		local clients = t:clients()
@@ -258,14 +262,14 @@ print_status("screen.restore", name, s, nil, nil, nil,options)
 		for t in pairs(tags) do
 			module.tag.restore(name, s, tags[t], options)
 		end
-		if options and options.remove == true then
-			snapshot[name].screen[s] = nil
-		end
 	end
 	if options and options.targets and options.targets.history ~= nil then
 		local h = snapshot[name].screen[s].history
 		h.active = (h.active - 1 - 1) % h.max + 1
 		awful.tag.viewmore(h.tag[h.active], s)
+	end
+	if options and options.remove == true then
+		snapshot[name].screen[s] = nil
 	end
 end
 module.screen.get = function (name, s, options)
