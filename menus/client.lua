@@ -61,14 +61,21 @@ function new(c)
 		end
 		return subMenu
 	end}
+--[[
 	menu:add_item {text="Move",button1=function(_menu,item,mods)
 		menu.visible = false
 		awful.mouse.client.move()
 	end}
 --TODO fix mousegrabber move resize
+
 	menu:add_item {text="Resize",button1=function(_menu,item,mods)
 		menu.visible = false
 		awful.mouse.client.resize()
+	end}
+---]]
+	menu:add_item {text="Close",button1=function(_menu,item,mods)
+		menu.visible = false
+		c:kill()
 	end}
 	c:connect_signal("unfocus",function()
 		menu.visible = false

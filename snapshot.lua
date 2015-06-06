@@ -10,7 +10,11 @@ local implements = {
 		tag = {},
 		history = {},
 		active_tag = nil,
-		multi_tag = nil
+		multi_tag = {
+			enabled = false,
+			separate = false,
+			tag = {}
+		}
 	} end,
 	tag = function () return {
 		client = {},
@@ -103,10 +107,7 @@ end
 module.client = {}
 module.client.update = function (name, s, t, c, options)
 	print_status("client.update", name, s, t, c, c:geometry(),options)
-	local tag_data = snapshot[name].screen[s].tag[t.name]
-	if snapshot[name].screen[s].multi_tag then
-		tag_data = snapshot[name].screen[s].multi_tag
-	end
+	local tag_data = module.tag.get(name, s, t)
 	tag_data.client[c.window] = implements.client(c)
 --	tag_data.client[c.window]:set(c)
 	tag_data.client[c.window].geometry = c:geometry()
@@ -115,11 +116,8 @@ module.client.update = function (name, s, t, c, options)
 	tag_data.client[c.window].fullscreen = c.fullscreen
 end
 module.client.restore = function (name, s, t, c, options)
-	local tag_data = snapshot[name].screen[s].tag[t.name]
+	local tag_data = module.tag.get(name, s, t)
 	local g = nil
-	if snapshot[name].screen[s].multi_tag then
-		tag_data = snapshot[name].screen[s].multi_tag
-	end
 	if tag_data.client[c.window] ~= nil then
 		g = tag_data.client[c.window].geometry
 		c:geometry(g)
@@ -130,6 +128,58 @@ module.client.restore = function (name, s, t, c, options)
 	print_status("client.restore", name, s, t, c, g,options)
 end
 module.tag = {}
+module.tag.get = function (name, s, t, options)
+	print_status("tag.get", name, s, t, nil, nil,options)
+	if snapshot[name] == nil then
+		snapshot[name] = implements.snapshot()
+	end
+	if snapshot[name].screen[s] == nil then
+		snapshot[name].screen[s] = implements.screen()
+	end
+	local result = nil
+	if snapshot[name].screen[s].multi_tag.enabled then
+		if snapshot[name].screen[s].multi_tag.separate then
+			if snapshot[name].screen[s].multi_tag.tag[t.name] == nil then
+				snapshot[name].screen[s].multi_tag.tag[t.name] = implements.tag()
+			end
+			result =  snapshot[name].screen[s].multi_tag.tag[t.name]
+			print("Mpiks", t.name)
+		else
+			if snapshot[name].screen[s].multi_tag.tag[1] == nil then
+				snapshot[name].screen[s].multi_tag.tag[1] = implements.tag()
+			end
+			result =  snapshot[name].screen[s].multi_tag.tag[1]
+		end
+	else
+		if snapshot[name].screen[s].tag[t.name] == nil then
+			snapshot[name].screen[s].tag[t.name] = implements.tag()
+		end
+		result = snapshot[name].screen[s].tag[t.name]
+	end
+	if options and options.targets and options.targets.layout == true then
+		result = module.tag.get(name, s, t, nil).layout
+	end
+	return result
+end
+module.tag.remove = function (name, s, t, options)
+	print_status("tag.remove", name, s, t, nil, nil,options)
+	if snapshot[name] == nil then
+		return
+	end
+	if snapshot[name].screen[s] == nil then
+		return
+	end
+	if snapshot[name].screen[s].multi_tag.enabled then
+		if snapshot[name].screen[s].multi_tag.separate then
+			snapshot[name].screen[s].multi_tag.tag[t.name] = nil
+		else
+			snapshot[name].screen[s].multi_tag.tag[1] = nil
+		end
+	else
+		snapshot[name].screen[s].tag[t.name] = nil
+	end
+end
+
 module.tag.update =  function (name, s, t, options)
 	print_status("tag.update", name, s, t, nil, nil,options)
 	if snapshot[name] == nil then
@@ -138,13 +188,7 @@ module.tag.update =  function (name, s, t, options)
 	if snapshot[name].screen[s] == nil then
 		snapshot[name].screen[s] = implements.screen()
 	end
-	if snapshot[name].screen[s].tag[t.name] == nil then
-		snapshot[name].screen[s].tag[t.name] = implements.tag()
-	end
-	local tag_data = snapshot[name].screen[s].tag[t.name]
-	if snapshot[name].screen[s].multi_tag then
-		tag_data = snapshot[name].screen[s].multi_tag
-	end
+	local tag_data = module.tag.get(name, s, t)
 	if options and options.targets and options.targets.client == true then
 		local clients = t:clients()
 		for c in pairs(clients) do
@@ -163,23 +207,7 @@ module.tag.update =  function (name, s, t, options)
 		end
 	end
 end
-module.tag.get = function (name, s, t, options)
-	print_status("tag.get", name, s, t, nil, nil,options)
-	local result = nil
-	if snapshot[name] == nil 
-	or snapshot[name].screen[s] == nil  
-	or snapshot[name].screen[s].tag[t.name] == nil then
-		return
-	end
-	local tag_data = snapshot[name].screen[s].tag[t.name]
-	if snapshot[name].screen[s].multi_tag then
-		tag_data = snapshot[name].screen[s].multi_tag
-	end
-	if options and options.targets and options.targets.layout == true then
-		 result = tag_data.layout
-	end
-	return result
-end
+
 module.tag.restore = function (name, s, t, options)
 	print_status("tag.restore", name, s, t, nil, nil,options)
 	if snapshot[name] == nil 
@@ -187,10 +215,7 @@ module.tag.restore = function (name, s, t, options)
 	or snapshot[name].screen[s].tag[t.name] == nil then
 		return
 	end
-	local tag_data = snapshot[name].screen[s].tag[t.name]
-	if snapshot[name].screen[s].multi_tag then
-		tag_data = snapshot[name].screen[s].multi_tag
-	end
+	local tag_data = module.tag.get(name, s, t)
 	if options and options.targets and options.targets.client == true then
 		local clients = tag_data.client
 		for i in pairs(clients) do
@@ -210,11 +235,7 @@ module.tag.restore = function (name, s, t, options)
 		end
 	end
 	if options and options.remove == true then
-		if snapshot[name].screen[s].multi_tag then
-			snapshot[name].screen[s].multi_tag = nil
-		else
-			snapshot[name].screen[s].tag[t.name] = nil
-		end
+		module.tag.remove(name, s, t, options)
 	end
 end
 module.screen = {}
@@ -227,13 +248,8 @@ print_status("screen.update", name, s, t, nil, nil,options)
 		snapshot[name].screen[s] = implements.screen()
 	end
 	if options and options.multi_tag then
-		if options.multi_tag[1] == true then
-			if snapshot[name].screen[s].multi_tag == nil then
-				snapshot[name].screen[s].multi_tag = implements.tag{}
-			end
-		else
-			snapshot[name].screen[s].multi_tag = nil
-		end
+		snapshot[name].screen[s].multi_tag.enabled = options.multi_tag.enabled
+		snapshot[name].screen[s].multi_tag.separate = options.multi_tag.separate
 	end
 	if options and options.targets and options.targets.active_tag == true then
 		snapshot[name].screen[s].active_tag = awful.tag.selected(s)

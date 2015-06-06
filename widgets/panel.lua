@@ -239,7 +239,8 @@ local function new(layouts)
 	--	mytaglist[s] = rad_taglist(s)._internal.margin
 		-- Create a tasklist widget
 	--    mytasklist[s] = awful.widget.tasklist(s, awful.widget.tasklist.filter.currenttags, mytasklist.buttons)
-		local rad_task     = require( "radical.impl.tasklist"      )
+		--local rad_task     = require( "radical.impl.tasklist"      )
+		local rad_task     = require("pretty.widgets.tasklist")
 		mytasklist[s] = rad_task(s)._internal.margin
 		-- Create the wibox
 		mywibox[s] = awful.wibox({ position = "bottom", screen = s, height = 18 })

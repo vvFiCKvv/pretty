@@ -373,8 +373,24 @@ for s = 1, screen.count() do screen[s]:connect_signal("arrange", function ()
         end
       end)
 end
-
-local screen_arrange = function ()
+module.history = {
+	options = {
+		multi_tag = {
+			enabled = true,
+			seprate = false,
+		},
+		layout = {
+			unified = false,
+		},
+		tag = {
+			layout = true,
+			geometry = true,
+		},
+		size = 20
+	}
+}
+module.history.signal = {}
+module.history.signal_arrange = function ()
 	local s = mouse.screen 
 	local active_tag = awful.tag.selected(s)
 	if active_tag == nil then
@@ -383,41 +399,60 @@ local screen_arrange = function ()
 	local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
 	print("s",s, "old", old_tag.name, "t", active_tag.name)
 	if old_tag == active_tag then
-		print("arrange")
-		snapshot.tag.update("history_update", s, active_tag, {targets = {geometry = true}})
-		snapshot.tag.update("history_update", s, active_tag, {targets = {layout = true}})
+		print("signal_arrange")
+		snapshot.tag.update("history_update", s, active_tag, {targets = module.history.options.tag})
 	end
 end
 
-local screen_tag_history =  function ()
+module.history.signal_tag_change =  function ()
 	local s = mouse.screen
 	local active_tag = awful.tag.selected(s)
 	if active_tag ==nil then
 		return
 	end
-	print("screen_tag_history", s, active_tag.name)
-	screen[s]:disconnect_signal("arrange", screen_arrange)
+	print("signal_tag_change", s, active_tag.name)
+	module.history.pause(s)
 	local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
 	snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
-	if #awful.tag.selectedlist(s) > 1 then
-		snapshot.screen.update("history_update", s, {multi_tag = {true}})
-	else
-		snapshot.screen.update("history_update", s, {multi_tag = {false}})
+	if module.history.options.multi_tag.enabled then
+		if #awful.tag.selectedlist(s) > 1 then
+			snapshot.screen.update("history_update", s, {multi_tag = {enabled = true, separate = module.history.options.multi_tag.separate}})
+		else
+			snapshot.screen.update("history_update", s, {multi_tag = {enabled = false, separate = module.history.options.multi_tag.separate}})
+		end
 	end
-	snapshot.tag.restore("history_update", s, active_tag, {targets = {geometry = true}})
-	snapshot.tag.restore("history_update", s, active_tag, {targets = {layout = true}})
-	screen[s]:connect_signal("arrange", screen_arrange)
+	snapshot.tag.restore("history_update", s, active_tag, {targets = module.history.options.tag})
+	module.history.start(s)
 end
 
 
 ---[[
 --TODO: multiple tags selection have its one history like a meta-tag fixes needing
-module.init = function ()
+module.history.init = function ()
 	for s = 1, screen.count() do
-		screen[s]:connect_signal("tag::history::update", screen_tag_history)
-		screen[s]:connect_signal("arrange", screen_arrange)
+		module.history.start(s)
 		snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
 	end
+end
+module.history.pause = function(s)
+	if s == nil then
+		for s = 1, screen.count() do
+			module.history.start(s)
+		end
+		return
+	end
+	screen[s]:disconnect_signal("tag::history::update", module.history.signal_tag_change)
+	screen[s]:disconnect_signal("arrange", module.history.signal_arrange)
+end
+module.history.start = function(s)
+	if s == nil then
+		for s = 1, screen.count() do
+			module.history.start(s)
+		end
+		return
+	end
+	screen[s]:connect_signal("tag::history::update", module.history.signal_tag_change)
+	screen[s]:connect_signal("arrange", module.history.signal_arrange)
 end
 --]]
 
