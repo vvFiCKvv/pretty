@@ -24,7 +24,7 @@ local beautiful   = require( "beautiful"    )
 local client      = require( "awful.client" )
 local wibox       = require( "wibox"        )
 local surface     = require( "gears.surface")
---local client_menu = require( "radical.impl.tasklist.client_menu")
+local client_menu = require("pretty.menus.client")
 
 local theme       = require( "radical.theme")
 local rad_client  = require( "radical.impl.common.client")
@@ -53,10 +53,8 @@ module.buttons = {
     end
   end,
   [3] = function(c)
-    --client_menu.client = c
-    --local menu = client_menu()
-    local menu = require( "pretty.menus.client" )(c)
-    menu.visible = not menu.visible
+    local menu = client_menu(c)
+    require("pretty.menus").popup(menu)
   end,
   [4] = function ()
     client.focus.byidx(1)
@@ -147,6 +145,7 @@ end
 
 -- Reload title and icon
 local function reload_content(c,b,a)
+	if c == nil or c.name == nil then return end
   local item = _cache[c]
   if item then
 --     if not beautiful.tasklist_disable_icon then

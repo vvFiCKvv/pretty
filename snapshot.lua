@@ -143,7 +143,6 @@ module.tag.get = function (name, s, t, options)
 				snapshot[name].screen[s].multi_tag.tag[t.name] = implements.tag()
 			end
 			result =  snapshot[name].screen[s].multi_tag.tag[t.name]
-			print("Mpiks", t.name)
 		else
 			if snapshot[name].screen[s].multi_tag.tag[1] == nil then
 				snapshot[name].screen[s].multi_tag.tag[1] = implements.tag()

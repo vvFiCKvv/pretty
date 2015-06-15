@@ -19,6 +19,7 @@ module.widget.maximizedbutton = function(c)
     c:connect_signal("property::maximized_horizontal", widget.update)
     return widget
 end
+
 local function new(c, menu)
 	local titlebars_enabled = beautiful.titlebar_enabled == nil and true or beautiful.titlebar_enabled
     if titlebars_enabled and (c.type == "normal" or c.type == "dialog") then
@@ -98,11 +99,17 @@ local function new(c, menu)
 		c:connect_signal("property::name", update)
 		update()
 		if menu then
-			title:set_menu(menu,3)
+			local buttons = awful.util.table.join(
+				awful.button({ }, 3, function()
+					require("pretty.menus").popup(menu)
+				end)
+			)
+			title:buttons(buttons)
 		end
 		
         title:set_align("center")
         middle_layout:add(title)
+        
         middle_layout:buttons(buttons)
 
 		-- Widgets that are aligned to the right

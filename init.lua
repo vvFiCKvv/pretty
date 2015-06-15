@@ -40,7 +40,7 @@ local switchTimer = {
 				this.tag = nil
 			end,
 	init = function (this, seconds, type)
-		this.timer = timer { timeout = seconds } -- init timer with interval 1 sec
+		this.timer = timer { timeout = seconds } -- init timer with interval seconds
 		this.type = type
 		this.screen = mouse.screen
 		this.tag = awful.tag.selected()
@@ -139,6 +139,9 @@ module.client.maximize = function(c, status, orientation, filter)
 		else
 			c.maximized_vertical = status
 		end
+	end
+	if status == false then
+		c.fullscreen = false
 	end
 	if orientation == "both" and status == true then
 		c:connect_signal("property::maximized_vertical", module.tag.max_toggle)
@@ -397,9 +400,9 @@ module.history.signal_arrange = function ()
 		return
 	end
 	local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
-	print("s",s, "old", old_tag.name, "t", active_tag.name)
+--	print("s",s, "old", old_tag.name, "t", active_tag.name)
 	if old_tag == active_tag then
-		print("signal_arrange")
+--		print("signal_arrange")
 		snapshot.tag.update("history_update", s, active_tag, {targets = module.history.options.tag})
 	end
 end
@@ -410,7 +413,7 @@ module.history.signal_tag_change =  function ()
 	if active_tag ==nil then
 		return
 	end
-	print("signal_tag_change", s, active_tag.name)
+--	print("signal_tag_change", s, active_tag.name)
 	module.history.pause(s)
 	local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
 	snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
