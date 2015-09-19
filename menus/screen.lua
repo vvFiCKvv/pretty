@@ -20,11 +20,13 @@ module.screen = function(s)
 			menu_timer.attach(menu, 1)
 			return menu
 		end}
+		--[[
 		menu:add_item {text="History", sub_menu = function()
 			local menu = require("pretty.menus.history")()
 			menu_timer.attach(menu, 1)
 			return menu
 		end}
+		---]]
 	end
 	return menu
 end

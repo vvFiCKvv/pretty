@@ -43,6 +43,7 @@ module.layout = function(delta)
 			end}
 		end
 	end
+	menu:add_widget(radical.widgets.separator())
     menu:add_item {text="edit", sub_menu = module.layout_selection}
 	return menu
 end
@@ -75,8 +76,8 @@ module.layout_selection = function(delta)
 	return menu
 end
 
-function new(delta)
-	menu = module.layout(delta)
+local function new(delta)
+	local menu = module.layout(delta)
 	if delta ~= nil then 
 		menu:connect_signal("visible::changed", function()
 			if menu.visible == true then

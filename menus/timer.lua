@@ -20,7 +20,9 @@ menu_timer.stop = function ()
 	if menu_timer.timer == nil then
 		return
 	end
-	menu_timer.timer:stop()
+	if menu_timer.timer.started then
+		menu_timer.timer:stop()
+	end
 	menu_timer.timer:disconnect_signal("timeout", menu_timer.func)
 end
 menu_timer.func = function()

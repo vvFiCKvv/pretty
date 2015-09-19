@@ -8,6 +8,7 @@ local module = {
 	menus = require("pretty.menus"),
 	layout = require("pretty.layout"),
 	snapshot = require("pretty.snapshot"),
+	history = require("pretty.history"),
 	mouse = {},
 	client = {
 		focus = {
@@ -20,36 +21,7 @@ local module = {
 	screen = {},
 	layout = {}
 }
---require("pretty.layout")
---TODO: one timer per tag
-local switchTimer = { 
-	index = 1,
-	timer = nil,
-	type = nil,
-	types = { client = 0, tag = 1, tagScreens = 2 },
-	screen = nil,
-	tag = nil,
-	clear = function (this)
-				if this.timer then
-					this.timer:stop() -- stop and clear the timer
-				end
-				this.timer = nil
-				this.index = 1
-				this.type = nil
-				this.screen = nil
-				this.tag = nil
-			end,
-	init = function (this, seconds, type)
-		this.timer = timer { timeout = seconds } -- init timer with interval seconds
-		this.type = type
-		this.screen = mouse.screen
-		this.tag = awful.tag.selected()
-		this.timer:connect_signal("timeout",-- on timeout
-			function()
-				this:clear()
-			end)
-	end
-}
+
 -- {{{ Functions
 
 --- Move mouse to center of a client
@@ -69,45 +41,7 @@ module.mouse.moveto_client = function (c, togle_tag_enabled)
 	end
 end
 
---- Switch client history backwards.
-module.client.focus.history.switch = function (multiple_switch_enabled, mouse_move_enabled)
-	if multiple_switch_enabled then
-		if switchTimer.type ~= switchTimer.types.client 
-		or switchTimer.screen ~= mouse.screen 
-		or switchTimer.tag ~= awful.tag.selected() then
-			switchTimer:clear()
-		end
-		if switchTimer.timer == nil then -- FirstTime
-			switchTimer:init(1, switchTimer.types.client)
-			
-		else -- multiple calls 
-			switchTimer.timer:stop()
-			i = 1 -- count the focus length
-			while awful.client.focus.history.get(mouse.screen, i) do
-				i = i + 1
-			end
-			if switchTimer.index < i - 1 then -- increase the index until focus history length
-				switchTimer.index = switchTimer.index + 1
-			end
-			if switchTimer.index > i - 1 then -- if greater than focus history
-				switchTimer.index = 1 -- something happened, reset index.
-			end
-		end
-		switchTimer.timer:start()
-	else
-	switchTimer.index = 1
-	end
-	c = awful.client.focus.history.get(mouse.screen, switchTimer.index )
-	if c then
-		client.focus = c
-		if mouse_move_enabled then
-			module.mouse.moveto_client(c)
-		end
-	end
-	if client.focus then
-		client.focus:raise()
-	end
-end
+
 module.client.maximize = function(c, status, orientation, filter)
 	if filter == nil then
 		filter = "normal"
@@ -147,23 +81,7 @@ module.client.maximize = function(c, status, orientation, filter)
 		c:connect_signal("property::maximized_vertical", module.tag.max_toggle)
 	end
 end
---- Switch tag history backwards.
---- mouse.screen fails if a tag has none clients.
-module.tag.history.switch = function()
-	if switchTimer.type ~= switchTimer.types.tag 
-	or switchTimer.screen ~= mouse.screen  then
-		switchTimer:clear()
-	end
-	if switchTimer.timer == nil then -- FirstTime
-		switchTimer:init(1, switchTimer.types.tag)
-		awful.tag.history.restore(mouse.screen, "previous")
-	else -- multiple calls 
-		switchTimer.timer:stop()
-		awful.tag.history.restore(mouse.screen,2)
-	end
-	awful.tag.history.update(screen[mouse.screen])
-	switchTimer.timer:start()
-end
+
 --- view only the tags the given/active client has
 module.tag.view_client = function (c)
 	-- mouse.screen fails if a tag has none clients.
@@ -204,8 +122,39 @@ module.tag.viewall_toggle = function ()
 		end
 	end
 end
-
-module.tag.max_toggle = function(status, t)
+function signal_tag_sync()
+	local active_tags = awful.tag.selectedlist(mouse.screen)
+	for s = 1, screen.count() do
+		screen[s]:disconnect_signal("tag::history::update", signal_tag_sync)
+		if s ~= mouse.screen then
+			local tags = awful.tag.gettags(s)
+			awful.tag.viewnone(s)
+			for t in pairs(active_tags) do
+				i = awful.tag.getidx(active_tags[t])
+				awful.tag.viewtoggle(tags[i])
+			end
+			-- sync screen tag history
+			module.history.signal_tag_change(nil, s)
+		end
+		screen[s]:connect_signal("tag::history::update", signal_tag_sync)
+	end
+end
+local tag_sync_status = false
+module.tag.sync_toggle = function (status)
+	if status == nil then
+		tag_sync_status = not tag_sync_status
+	else
+		tag_sync_status = status
+	end
+	if tag_sync_status == true then
+		signal_tag_sync()
+	else
+		for s = 1, screen.count() do
+			screen[s]:disconnect_signal("tag::history::update", signal_tag_sync)
+		end
+	end
+end
+module.tag.max_toggle = function (status, t)
 	if t == nil then
 		t = awful.tag.selected()
 	end
@@ -376,88 +325,7 @@ for s = 1, screen.count() do screen[s]:connect_signal("arrange", function ()
         end
       end)
 end
-module.history = {
-	options = {
-		multi_tag = {
-			enabled = true,
-			seprate = false,
-		},
-		layout = {
-			unified = false,
-		},
-		tag = {
-			layout = true,
-			geometry = true,
-		},
-		size = 20
-	}
-}
-module.history.signal = {}
-module.history.signal_arrange = function ()
-	local s = mouse.screen 
-	local active_tag = awful.tag.selected(s)
-	if active_tag == nil then
-		return
-	end
-	local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
---	print("s",s, "old", old_tag.name, "t", active_tag.name)
-	if old_tag == active_tag then
---		print("signal_arrange")
-		snapshot.tag.update("history_update", s, active_tag, {targets = module.history.options.tag})
-	end
-end
 
-module.history.signal_tag_change =  function ()
-	local s = mouse.screen
-	local active_tag = awful.tag.selected(s)
-	if active_tag ==nil then
-		return
-	end
---	print("signal_tag_change", s, active_tag.name)
-	module.history.pause(s)
-	local old_tag = snapshot.screen.get("history_update", s, {targets = {active_tag = true}})
-	snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
-	if module.history.options.multi_tag.enabled then
-		if #awful.tag.selectedlist(s) > 1 then
-			snapshot.screen.update("history_update", s, {multi_tag = {enabled = true, separate = module.history.options.multi_tag.separate}})
-		else
-			snapshot.screen.update("history_update", s, {multi_tag = {enabled = false, separate = module.history.options.multi_tag.separate}})
-		end
-	end
-	snapshot.tag.restore("history_update", s, active_tag, {targets = module.history.options.tag})
-	module.history.start(s)
-end
-
-
----[[
---TODO: multiple tags selection have its one history like a meta-tag fixes needing
-module.history.init = function ()
-	for s = 1, screen.count() do
-		module.history.start(s)
-		snapshot.screen.update("history_update", s, {targets = {active_tag = true}})
-	end
-end
-module.history.pause = function(s)
-	if s == nil then
-		for s = 1, screen.count() do
-			module.history.start(s)
-		end
-		return
-	end
-	screen[s]:disconnect_signal("tag::history::update", module.history.signal_tag_change)
-	screen[s]:disconnect_signal("arrange", module.history.signal_arrange)
-end
-module.history.start = function(s)
-	if s == nil then
-		for s = 1, screen.count() do
-			module.history.start(s)
-		end
-		return
-	end
-	screen[s]:connect_signal("tag::history::update", module.history.signal_tag_change)
-	screen[s]:connect_signal("arrange", module.history.signal_arrange)
-end
---]]
 
 -- }}}
 return module

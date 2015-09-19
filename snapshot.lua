@@ -8,7 +8,7 @@ local module = {}
 local implements = {
 	screen = function () return {
 		tag = {},
-		history = {},
+		history = nil,
 		active_tag = nil,
 		multi_tag = {
 			enabled = false,
@@ -25,7 +25,6 @@ local implements = {
 	history = function () return {
 		tag = {},
 		max = 10,
-		active = 1
 	} end,
 	client = function (c) return {
 		_data = c,
@@ -47,62 +46,13 @@ local function new()
 	
 end
 
----[[
-tostringR = function (x)
-	local s
-	if type(x) == "table" then
-		s = "{"
-		local i, v = next(x)
-		while i do
-			s = s .. tostring(i) .. "=" .. tostringR(v)
-			i, v = next(x, i)
-			if i then s = s .. "," end
-		end
-		return s .. "}"
-	end
-	if type(x) == "tag" then
-		return x.name
-	end
-	if type(x) == "client" then
-		return x.window .. "g=" .. tostringR(x:geometry())
-	end
-	return tostring(x)
-end
-local debugTabs = 0
-function debug_status(func)
-	local base_level = 3
-	local level = base_level
-	local cont = true
-	while cont ~=nil do
-		local info = debug.getinfo(level, "S")
-		cont = string.find(info.source, "snapshot.lua")
-		level = level + 1
-	end
-	level = level - base_level - 2
-	local result = string.rep("\t", level)
-	result = result .. "<" .. func
-	local info = debug.getinfo(base_level, "Sl")
-	result = result .. string.format(" line='%d'", info.currentline)
-	result = result .. ">"
-	local i = 1
-      while true do
-        local name, value = debug.getlocal(base_level, i)
-        if not name or string.find(name, "temporary") then break end
-        result = result .. "\n" .. string.rep("\t", level+1) .. string.format("%s='%s'", name, tostringR(value))
-     
-        i = i + 1
-      end
-    result =  result .. "\n" .. string.rep("\t", level)
-	result = result .. "</" .. func .. ">"
-	print (result)
-end
----]]
+
 local print_status = function(func, name, s, t, c, g, options)
 	if true then
 	--if func ~= "client.update" and func ~= "client.restore" then 
 		return
 	end
-	debug_status(func)
+	print(require("pretty.debug").status(func, 3))
 end
 module.client = {}
 module.client.update = function (name, s, t, c, options)
@@ -260,10 +210,31 @@ print_status("screen.update", name, s, t, nil, nil,options)
 		end
 	end
 	if options and options.targets and options.targets.history == true then
+		if snapshot[name].screen[s].history == nil then
+			snapshot[name].screen[s].history = implements.history()
+		end
 		local h = snapshot[name].screen[s].history
-		h.tag[h.active] = awful.tag.selectedlist(s)
---		h.tag[h.active] = awful.tag.selected(s)
-		h.active = h.active  % h.max + 1
+		local taglist = awful.tag.selectedlist(s)
+		for t in pairs(h.tag) do
+			local identical = true
+			if #h.tag[t] == #taglist then
+				for i in pairs(taglist) do
+					if h.tag[t][i] ~= taglist[i] then
+						identical = false
+						break
+					end
+				end
+			else
+				identical = false
+			end
+			if identical == true then
+				table.remove(h.tag, t)
+			end
+		end
+		table.insert(h.tag, 1, taglist)
+		if #h.tag > h.max + 1 then
+			table.remove(h.tag, h.max)
+		end
 	end
 end
 module.screen.restore = function (name, s, options)
@@ -280,8 +251,8 @@ print_status("screen.restore", name, s, nil, nil, nil,options)
 	end
 	if options and options.targets and options.targets.history ~= nil then
 		local h = snapshot[name].screen[s].history
-		h.active = (h.active - 1 - 1) % h.max + 1
-		awful.tag.viewmore(h.tag[h.active], s)
+		awful.tag.viewmore(h.tag[1], s)
+		table.remove(h.tag, 1)
 	end
 	if options and options.remove == true then
 		snapshot[name].screen[s] = nil
@@ -302,8 +273,9 @@ print_status("screen.get", name, s, nil, nil, nil,options)
 		if options and options.targets and options.targets.history ~= nil then
 		local h = snapshot[name].screen[s].history
 		local i = options.targets.history
-		h.active = (h.active + - i - 1) % h.max + 1
-		awful.tag.viewmore(h.tag[h.active], s)
+		if i < h.max + 1 then
+			result = h.tag[i]
+		end
 	end
 	return result
 end

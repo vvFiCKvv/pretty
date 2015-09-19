@@ -178,6 +178,18 @@ local function new(layouts)
 	mywibox = {}
 	mypromptbox = {}
 	mylayoutbox = {}
+	
+	mainmanu = wibox.widget.imagebox(beautiful.awesome_icon)
+	mainmanu:buttons(awful.util.table.join(
+		awful.button({ }, 1, function () 
+			local menu = require("pretty.menus.application").build_menu()
+			require("pretty.menus").popup(menu) 
+		end),
+		awful.button({ }, 3, function () 
+			local menu = require("pretty.menus.screen").screen(mouse.screen)
+			require("pretty.menus").popup(menu)
+		end)
+	))
 	mytaglist = {}
 	mytaglist.buttons = awful.util.table.join(
 		awful.button({ }, 1, awful.tag.viewonly),
@@ -269,6 +281,8 @@ local function new(layouts)
 
 		-- Widgets that are aligned to the left
 		local left_layout = wibox.layout.fixed.horizontal()
+		left_layout:add(small_spr)
+		left_layout:add(mainmanu)
 		left_layout:add(small_spr)
 		left_layout:add(mylayoutbox[s])
 		left_layout:add(bar_spr)

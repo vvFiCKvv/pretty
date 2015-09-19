@@ -92,8 +92,15 @@ local function new(c, menu)
 		end
 		local title = wibox.widget.textbox()
 		local function update()
-			if c~=nil and c.name~=nil then
-					title:set_text(" " .. c.class ..": " .. c.name or "<unknown>")
+			if c~=nil then
+				local title_text = " "
+				if c.class ~= nil then
+					title_text = title_text .. c.class ..": "
+				end
+				if c.name ~= nil then
+					title_text = title_text .. c.name
+				end
+				title:set_text(title_text)
 			end
 		end
 		c:connect_signal("property::name", update)

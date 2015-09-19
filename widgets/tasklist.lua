@@ -151,7 +151,11 @@ local function reload_content(c,b,a)
 --     if not beautiful.tasklist_disable_icon then
 --       item.icon = surface(c.icon) or beautiful.tasklist_default_icon
 --     end
-    item.text = c.class .. ": " .. c.name or "N/A"
+	item.text = c.name or "N/A"
+	if c.class ~= nil then
+		item.text = c.class .. ": " .. item.text
+	end
+    
   end
 end
 
